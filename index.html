@@ -199,14 +199,14 @@
             <h2>You</h2>
             <div class="counter">Streak: <span id="p1-streak">0</span></div>
             <div class="counter">Tasks Owed: <span id="p1-owed">1</span></div>
-            <button onclick="triggerEmail('User1', 'YOUR_PARENT_EMAIL@GMAIL.COM')">I'm Done!</button> 
+            <button onclick="triggerEmail('User1', 'poornima.naresh@gmail.com')">I'm Done!</button> 
         </div>
 
         <div class="player-box">
             <h2>Friend</h2>
             <div class="counter">Streak: <span id="p2-friend">0</span></div>
             <div class="counter">Tasks Owed: <span id="p2-owed">1</span></div>
-            <button onclick="triggerEmail('User2', 'FRIENDS_PARENT_EMAIL@GMAIL.COM')">I'm Done!</button>
+            <button onclick="triggerEmail('User2', 'poornima.naresh@gmail.com')">I'm Done!</button>
         </div>
     </div>
 </div>
@@ -234,37 +234,42 @@
 </div>
 
 <script>
-    // ⚠️ CONFIGURATION STAGE: REPLACE WITH YOUR COPIED CONFIG STRINGS
-    const firebaseConfig = {
-        apiKey: "YOUR_FIREBASE_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com", 
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
+    // ⚠️ STEP C: CHOOSE A SECRET PASSWORD FOR YOU AND YOUR FRIEND
+    const ACCESS_PASSWORD = "2812"; 
 
-    const EMAILJS_SERVICE_ID = "YOUR_EMAILJS_SERVICE_ID";
-    const EMAILJS_TEMPLATE_ID = "YOUR_EMAILJS_TEMPLATE_ID";
-    const EMAILJS_PUBLIC_KEY = "YOUR_EMAILJS_PUBLIC_KEY";
-    
-    // Set a password you and your friend will use to open the app on your phones
-    const ACCESS_PASSWORD = "CHORE_SECRET_PASSWORD_HERE"; 
-
-    // Initialize Global Platforms
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-
+    // Global Tracker States
+    let currentVerifyingUser = null;
+    let currentCorrectPIN = null;
     let state = {
         lastCompletedBy: "",
         User1: { streak: 0, owed: 1 },
         User2: { streak: 0, owed: 1 }
     };
 
-    let currentVerifyingUser = null;
-    let currentCorrectPIN = null;
+    // ⚠️ STEP D: PASTE YOUR EXACT FIREBASE STRINGS HERE 
+    const firebaseConfig = {
+        apiKey: "AIzaSyAjjqxqbP_umSXBwpGAYL7HeGK2BpJOMAc",
+        authDomain: "tablewipe.firebaseapp.com",
+        databaseURL: "https://tablewipe-default-rtdb.firebaseio.com/", // Fixed clean root database URL
+        projectId: "tablewipe",
+        storageBucket: "tablewipe.firebasestorage.app",
+        messagingSenderId: "45871127135",
+        appId: "1:45871127135:web:764c1d1a9e77ebd5cd59ea",
+        measurementId: "G-Q7B9ENHDD4"
+    };
+
+    // ⚠️ STEP E: PASTE YOUR EXACT EMAILJS KEYS HERE
+    const EMAILJS_SERVICE_ID = "service_di7q8p6";
+    const EMAILJS_TEMPLATE_ID = "template_t0xaauc";
+    const EMAILJS_PUBLIC_KEY = "vTUXNYQKVVSIMSV2R";
+    
+    // Initialize Global Platforms
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+
+    // Run Initial State Sync
+    updateUI();
 
     // Listen to continuous cloud updates from Firebase Database
     database.ref('choreState').on('value', (snapshot) => {
@@ -342,14 +347,12 @@
         document.getElementById('otpInput').value = '';
     }
 
-    // NEW FUNCTIONALITY: Prompt for password when wanting to reset dashboard metrics
     function promptReset() {
         document.getElementById('passModalError').innerText = "";
         document.getElementById('passModalInput').value = "";
         document.getElementById('passModalTitle').innerText = "Reset All Progress Data";
         document.getElementById('passModalDesc').innerText = "Enter the Room Password to clear data logs back to start defaults.";
         
-        // Map dynamic button callback action explicitly
         document.getElementById('passModalSubmit').onclick = executeDataReset;
         document.getElementById('passwordModal').style.display = 'flex';
     }
@@ -357,7 +360,6 @@
     function executeDataReset() {
         const passwordEntered = document.getElementById('passModalInput').value;
         if(passwordEntered === ACCESS_PASSWORD) {
-            // Restore default clean values
             state = {
                 lastCompletedBy: "",
                 User1: { streak: 0, owed: 1 },
@@ -402,8 +404,6 @@
         }
 
         state.lastCompletedBy = user;
-        
-        // Push state up to the cloud instantly
         syncToFirebase();
     }
 </script>
