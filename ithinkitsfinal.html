@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chore Accountability Tracker</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #ea4335;
+            --primary-hover: #c53023;
+            --background: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --error: #ef4444;
+            --success: #22c55e;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: var(--card);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 24px;
+            font-size: 1.8rem;
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 1.4rem; }
+
+        .player-box {
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .counter {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin: 8px 0;
+        }
+
+        .counter span {
+            color: var(--text);
+            font-weight: bold;
+        }
+
+        button {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover { background-color: var(--primary-hover); }
+
+        .status-banner {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 0.95rem;
+            display: none;
+        }
+        .status-banner.error { background: rgba(239, 68, 68, 0.2); color: var(--error); display: block; }
+        .status-banner.success { background: rgba(34, 197, 94, 0.2); color: var(--success); display: block; }
+
+        .input-style {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            background: var(--background);
+            color: var(--text);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        .input-style:focus { border-color: var(--primary); }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            justify-content: center; align-items: center;
+            padding: 20px; box-sizing: border-box;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 24px;
+            border-radius: 16px;
+            width: 100%; max-width: 340px;
+            text-align: center;
+        }
+
+        .otp-input {
+            width: 80%; letter-spacing: 4px; text-align: center; font-size: 1.6rem;
+        }
+
+        .cancel-btn { background: transparent; color: var(--text-muted); font-size: 0.9rem; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="loginScreen" class="screen active">
+        <h1>Chore Tracker Login</h1>
+        <div id="loginError" style="color: var(--error); text-align:center; margin-bottom:10px;"></div>
+        <input type="password" id="roomPasswordInput" class="input-style" placeholder="Enter Chore Room Password">
+        <button onclick="attemptLogin()">Enter Room</button>
+    </div>
+
+    <div id="mainScreen" class="screen">
+        <h1>Chore Tracker</h1>
+        <div id="statusBanner" class="status-banner"></div>
+        
+        <div class="player-box">
+            <h2>You</h2>
+            <div class="counter">Streak: <span id="p1-streak">0</span></div>
+            <div class="counter">Tasks Owed: <span id="p1-owed">1</span></div>
+            <button onclick="triggerEmail('User1', 'poornima.naresh@gmail.com')">I'm Done!</button> 
+        </div>
+
+        <div class="player-box">
+            <h2>Friend</h2>
+            <div class="counter">Streak: <span id="p2-friend">0</span></div>
+            <div class="counter">Tasks Owed: <span id="p2-owed">1</span></div>
+            <button onclick="triggerEmail('User2', 'poornima.naresh@gmail.com')">I'm Done!</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="otpModal">
+    <div class="modal-content">
+        <h3>Email Verification</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">A secret PIN code was sent to your parent's email.</p>
+        <div id="modalError" style="color: var(--error); margin-bottom: 10px; font-size: 0.85rem;"></div>
+        <input type="text" id="otpInput" class="input-style otp-input" maxlength="4" placeholder="0000">
+        <button onclick="verifyEmailOTP()">Verify & Confirm</button>
+        <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<script>
+    // ⚠️ CONFIGURATION STAGE: REPLACE WITH YOUR COPIED CONFIG STRINGS
+    const firebaseConfig = {
+        apiKey: "AIzaSyAjjqxqbP_umSXBwpGAYL7HeGK2BpJOMAc",
+        authDomain: "tablewipe.firebaseapp.com",
+        databaseURL: "https://tablewipe-default-rtdb.firebaseio.com/",
+        projectId: "tablewipe",
+        storageBucket: "tablewipe.firebasestorage.app",
+        messagingSenderId: "45871127135",
+        appId: "1:45871127135:web:764c1d1a9e77ebd5cd59ea",
+        measurementId: "G-Q7B9ENHDD4"
+    };
+
+    const EMAILJS_SERVICE_ID = "service_di7q8p6";
+    const EMAILJS_TEMPLATE_ID = "template_t0xaauc";
+    const EMAILJS_PUBLIC_KEY = "vTUXNYQKVVSIMSV2R";
+    
+    // Set a password you and your friend will use to open the app on your phones
+    const ACCESS_PASSWORD = "2812"; 
+
+    // Initialize Global Platforms
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+
+    let state = {
+        lastCompletedBy: "",
+        User1: { streak: 0, owed: 1 },
+        User2: { streak: 0, owed: 1 }
+    };
+
+    let currentVerifyingUser = null;
+    let currentCorrectPIN = null;
+
+    // Listen to continuous cloud updates from Firebase Database
+    database.ref('choreState').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            state = data;
+            updateUI();
+        }
+    });
+
+    function attemptLogin() {
+        const entered = document.getElementById('roomPasswordInput').value;
+        if(entered === ACCESS_PASSWORD) {
+            document.getElementById('loginScreen').classList.remove('active');
+            document.getElementById('mainScreen').classList.add('active');
+        } else {
+            document.getElementById('loginError').innerText = "Incorrect Password Room Key.";
+        }
+    }
+
+    function updateUI() {
+        document.getElementById('p1-streak').innerText = state.User1.streak;
+        document.getElementById('p1-owed').innerText = state.User1.owed;
+        document.getElementById('p2-friend').innerText = state.User2.streak;
+        document.getElementById('p2-owed').innerText = state.User2.owed;
+    }
+
+    function syncToFirebase() {
+        database.ref('choreState').set(state);
+    }
+
+    function displayBanner(message, type) {
+        const banner = document.getElementById('statusBanner');
+        banner.innerText = message;
+        banner.className = `status-banner ${type}`;
+        setTimeout(() => { banner.className = 'status-banner'; }, 6000);
+    }
+
+    function triggerEmail(user, parentEmail) {
+        currentVerifyingUser = user;
+        document.getElementById('modalError').innerText = "";
+        currentCorrectPIN = Math.floor(1000 + Math.random() * 9000).toString();
+        
+        const templateParams = {
+            user: user === 'User1' ? 'Your child' : 'Your friend',
+            pin: currentCorrectPIN,
+            to_email: parentEmail 
+        };
+
+        emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+        .then(() => {
+            document.getElementById('otpModal').style.display = 'flex';
+        })
+        .catch((err) => {
+            displayBanner("Email transmission failed. Check API configuration values.", "error");
+            console.error(err);
+        });
+    }
+
+    function verifyEmailOTP() {
+        const inputCode = document.getElementById('otpInput').value;
+        const modalError = document.getElementById('modalError');
+
+        if(inputCode === currentCorrectPIN) {
+            processTaskCompletion(currentVerifyingUser);
+            closeModal();
+            displayBanner(`Success! Saved live metric updates.`, "success");
+        } else {
+            modalError.innerText = "Incorrect pin code verification verification entry.";
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('otpModal').style.display = 'none';
+        document.getElementById('otpInput').value = '';
+    }
+
+    function processTaskCompletion(user) {
+        const opponent = user === 'User1' ? 'User2' : 'User1';
+
+        if (state[user].owed > 0) {
+            state[user].owed--;
+        }
+
+        if (state.lastCompletedBy === user) {
+            state[user].streak++;
+            if (state[user].streak >= 2) {
+                state[opponent].owed += 2;
+                state[user].streak = 0; 
+            }
+        } else {
+            if (state.lastCompletedBy) {
+                state[state.lastCompletedBy].streak = 0;
+            }
+            state[user].streak = 1;
+        }
+
+        if (state[user].owed === 0 && state[opponent].owed === 0) {
+            state[user].owed = 1;
+            state[opponent].owed = 1;
+        }
+
+        state.lastCompletedBy = user;
+        
+        // Push state up to the cloud instantly
+        syncToFirebase();
+    }
+</script>
+</body>
+</html>
