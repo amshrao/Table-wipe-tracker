@@ -3,408 +3,491 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chore Accountability Tracker</title>
-    
+    <title>Family Chore Portal</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    
     <style>
         :root {
-            --primary: #ea4335;
-            --primary-hover: #c53023;
             --background: #0f172a;
             --card: #1e293b;
             --text: #f8fafc;
-            --text-muted: #94a3b8;
             --border: #334155;
             --error: #ef4444;
             --success: #22c55e;
+            --info: #38bdf8;
+            --warning: #f59e0b;
         }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--background);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            box-sizing: border-box;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 400px;
-            background: var(--card);
-            padding: 24px;
-            border-radius: 16px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-            position: relative;
-        }
-
+        body { font-family: system-ui, sans-serif; background: var(--background); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; box-sizing: border-box; }
+        .container { width: 100%; max-width: 500px; background: var(--card); padding: 24px; border-radius: 16px; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); position: relative; }
         .screen { display: none; }
         .screen.active { display: block; }
+        
+        /* SHARED UI ELEMENTS */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .top-bar h2 { margin: 0; font-size: 1.2rem; color: #94a3b8; }
+        .btn-logout { background: transparent; color: var(--error); border: 1px solid var(--error); padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        .btn-logout:hover { background: var(--error); color: white; }
 
-        h1 {
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 24px;
-            font-size: 1.8rem;
-        }
+        /* BEAUTIFUL GOOGLE LOGIN BUTTON */
+        .google-login-btn { display: inline-flex; align-items: center; justify-content: center; background: #ffffff; color: #1e293b; font-size: 1rem; font-weight: 600; padding: 12px 24px; border-radius: 9999px; border: 1px solid #e2e8f0; cursor: pointer; box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1), 0 2px 5px rgba(0, 0, 0, 0.2); transition: all 0.2s ease-in-out; margin-top: 15px; }
+        .google-login-btn:hover { background: #f8fafc; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15), 0 4px 8px rgba(0, 0, 0, 0.2); }
+        .google-login-btn img { margin-right: 12px; width: 22px; height: 22px; }
 
-        .header-area {
-            position: relative;
-            margin-bottom: 24px;
-            text-align: center;
-        }
+        /* CHILD SYSTEM PANEL ELEMENTS */
+        .user-panel { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; }
+        .panel-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .user-info h3 { margin: 0 0 5px 0; }
+        .user-info span { color: #eab308; font-weight: bold; font-size: 0.9rem; }
+        .btn-done { background: #2563eb; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-done:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; }
+        .btn-done.u2 { background: #7c3aed; }
+        .btn-lie { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid var(--warning); padding: 8px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; width: 100%; transition: all 0.2s; }
+        .btn-lie:hover { background: var(--warning); color: #000; }
+        .status { padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px; display: none; font-weight: 600; background: rgba(56, 189, 248, 0.2); color: var(--info); }
+        .role-btn-container { display: flex; gap: 15px; margin-top: 20px; }
+        .role-btn { flex: 1; padding: 15px; font-weight: bold; font-size: 1rem; border-radius: 8px; border: none; cursor: pointer; color: white; }
 
-        .header-area h1 {
-            margin: 0;
-        }
+        /* PARENT PANEL ELEMENTS */
+        .action-box { border: 2px solid var(--border); padding: 20px; border-radius: 12px; margin-top: 20px; }
+        .btn-container { display: flex; gap: 15px; margin-top: 15px; }
+        .tick-btn { background: #22c55e; flex: 1; border: none; color: white; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .cross-btn { background: #ef4444; flex: 1; border: none; color: white; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: var(--card); padding: 24px; border-radius: 16px; width: 80%; max-width: 300px; text-align: center; border: 1px solid var(--border); }
+        .stars { display: flex; justify-content: center; gap: 10px; margin: 20px 0; font-size: 2rem; }
+        .star { cursor: pointer; color: #475569; }
+        .star.selected { color: #eab308; }
+        button.action-submit { width: 100%; background: var(--success); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
 
-        .reset-action-btn {
-            position: absolute;
-            right: 0;
-            top: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            width: auto;
-            margin-top: 0;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        .reset-action-btn:hover {
-            background: rgba(239, 68, 68, 0.15);
-            border-color: var(--error);
-            color: var(--error);
-        }
+        /* HISTORY LOG TABLE */
+        .table-container { width: 100%; max-width: 500px; background: var(--card); border-radius: 16px; padding: 20px; box-sizing: border-box; border: 1px solid var(--border); overflow-x: auto; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .table-header h2 { margin: 0; font-size: 1.2rem; color: #94a3b8; }
+        .btn-delete-logs { background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid var(--error); padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.8rem; display: none; transition: all 0.2s; }
+        .btn-delete-logs:hover { background: var(--error); color: white; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        th, td { padding: 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        th { color: #94a3b8; font-weight: 600; }
+        .badge { padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
+        .badge.approved { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .badge.rejected { background: rgba(239, 68, 68, 0.2); color: var(--error); }
 
-        h2 { margin: 0 0 10px 0; font-size: 1.4rem; }
-
-        .player-box {
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .counter {
-            font-size: 1.1rem;
-            color: var(--text-muted);
-            margin: 8px 0;
-        }
-
-        .counter span {
-            color: var(--text);
-            font-weight: bold;
-        }
-
-        button {
-            width: 100%;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 10px;
-        }
-
-        button:hover { background-color: var(--primary-hover); }
-
-        .status-banner {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 0.95rem;
-            display: none;
-        }
-        .status-banner.error { background: rgba(239, 68, 68, 0.2); color: var(--error); display: block; }
-        .status-banner.success { background: rgba(34, 197, 94, 0.2); color: var(--success); display: block; }
-
-        .input-style {
-            width: 100%;
-            padding: 12px;
-            font-size: 1rem;
-            background: var(--background);
-            color: var(--text);
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            box-sizing: border-box;
-            margin-bottom: 15px;
-            outline: none;
-        }
-
-        .input-style:focus { border-color: var(--primary); }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(4px);
-            justify-content: center; align-items: center;
-            padding: 20px; box-sizing: border-box;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: var(--card);
-            border: 1px solid var(--border);
-            padding: 24px;
-            border-radius: 16px;
-            width: 100%; max-width: 340px;
-            text-align: center;
-        }
-
-        .otp-input {
-            width: 80%; letter-spacing: 4px; text-align: center; font-size: 1.6rem;
-        }
-
-        .cancel-btn { background: transparent; color: var(--text-muted); font-size: 0.9rem; margin-top: 10px; }
+        /* OVERLAYS */
+        .big-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 9999; padding: 20px; box-sizing: border-box; }
+        .big-dialog { background: #1e293b; border-radius: 24px; padding: 40px 24px; text-align: center; width: 100%; max-width: 340px; border: 2px solid var(--border); }
+        .big-overlay.active { display: flex; }
+        .dialog-btn { width: 100%; background: var(--success); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div id="loginScreen" class="screen active">
-        <h1>Chore Tracker Login</h1>
-        <div id="loginError" style="color: var(--error); text-align:center; margin-bottom:10px;"></div>
-        <input type="password" id="roomPasswordInput" class="input-style" placeholder="Enter Chore Room Password">
-        <button onclick="attemptLogin()">Enter Room</button>
+        <h1>Family Portal</h1>
+        <p style="color: #94a3b8; margin-bottom: 25px;">Sign in via Google to access your dashboard</p>
+        <button class="google-login-btn" onclick="loginWithGoogle()">
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTL6ae8sAY6zsQcO3SQoRg24Zf712ePeqvGJq0lrOZAHg&s" alt="Google">
+            Sign in with Google
+        </button>
     </div>
 
-    <div id="mainScreen" class="screen">
-        <div class="header-area">
-            <h1>Chore Tracker</h1>
-            <button class="reset-action-btn" onclick="promptReset()">Reset Data</button>
+    <div id="childDashboard" class="screen">
+        <div class="top-bar">
+            <h2>Chore Dashboard</h2>
+            <button class="btn-logout" onclick="logout()">Sign Out</button>
         </div>
-        <div id="statusBanner" class="status-banner"></div>
+        <div id="statusBanner" class="status">Waiting for parent approval...</div>
         
-        <div class="player-box">
-            <h2>You</h2>
-            <div class="counter">Streak: <span id="p1-streak">0</span></div>
-            <div class="counter">Tasks Owed: <span id="p1-owed">1</span></div>
-            <button onclick="triggerEmail('User1', 'poornima.naresh@gmail.com')">I'm Done!</button> 
+        <div class="user-panel">
+            <div class="panel-flex">
+                <div class="user-info">
+                    <h3 id="labelUser1">User 1</h3>
+                    <span id="u1Rating">Rating: —-</span>
+                </div>
+                <button id="btnUser1" class="btn-done" onclick="sendRequest('User1')" disabled>User 1 Done</button>
+            </div>
+            <button id="lieUser1" class="btn-lie" onclick="verifyTruth()" style="display:none;">🤥 Are you lying?</button>
         </div>
 
-        <div class="player-box">
-            <h2>Friend</h2>
-            <div class="counter">Streak: <span id="p2-friend">0</span></div>
-            <div class="counter">Tasks Owed: <span id="p2-owed">1</span></div>
-            <button onclick="triggerEmail('User2', 'poornima.naresh@gmail.com')">I'm Done!</button>
+        <div class="user-panel">
+            <div class="panel-flex">
+                <div class="user-info">
+                    <h3 id="labelUser2">User 2</h3>
+                    <span id="u2Rating">Rating: —-</span>
+                </div>
+                <button id="btnUser2" class="btn-done u2" onclick="sendRequest('User2')" disabled>User 2 Done</button>
+            </div>
+            <button id="lieUser2" class="btn-lie" onclick="verifyTruth()" style="display:none;">🤥 Are you lying?</button>
+        </div>
+    </div>
+
+    <div id="parentDashboard" class="screen">
+        <div class="top-bar">
+            <h2>Parent Hub</h2>
+            <button class="btn-logout" onclick="logout()">Sign Out</button>
+        </div>
+        <div id="noRequests" style="color: #94a3b8; margin: 30px 0;">No pending chore approvals.</div>
+        <div id="requestBox" class="action-box" style="display: none;">
+            <p><strong id="reqUser">Child</strong> claims they finished their chore assignment!</p>
+            <div class="btn-container">
+                <button class="tick-btn" onclick="openRatingModal()">✓ Approve</button>
+                <button class="cross-btn" onclick="rejectChore()">✕ Reject</button>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="modal" id="otpModal">
+<div class="table-container" id="historyContainer" style="display: none;">
+    <div class="table-header">
+        <h2>Chore Logs & History</h2>
+        <button id="btnDeleteLogs" class="btn-delete-logs" onclick="clearChoreHistory()">🗑️ Clear All Logs</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Member</th>
+                <th>Status</th>
+                <th>Rating</th>
+                <th>Date/Time</th>
+                <th>Parent Approver</th>
+                <th>Parent Email</th>
+            </tr>
+        </thead>
+        <tbody id="historyTableBody"></tbody>
+    </table>
+</div>
+
+<div class="modal" id="ratingModal">
     <div class="modal-content">
-        <h3>Email Verification</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">A secret PIN code was sent to your parent's email.</p>
-        <div id="modalError" style="color: var(--error); margin-bottom: 10px; font-size: 0.85rem;"></div>
-        <input type="text" id="otpInput" class="input-style otp-input" maxlength="4" placeholder="0000">
-        <button onclick="verifyEmailOTP()">Verify & Confirm</button>
-        <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+        <h3>Rate Chore Quality</h3>
+        <div class="stars">
+            <span class="star" onclick="setRating(1)">★</span>
+            <span class="star" onclick="setRating(2)">★</span>
+            <span class="star" onclick="setRating(3)">★</span>
+            <span class="star" onclick="setRating(4)">★</span>
+            <span class="star" onclick="setRating(5)">★</span>
+        </div>
+        <button class="action-submit" onclick="submitApproval()">Submit Approval</button>
     </div>
 </div>
 
-<div class="modal" id="passwordModal">
-    <div class="modal-content">
-        <h3 id="passModalTitle">Security Action</h3>
-        <p id="passModalDesc" style="color: var(--text-muted); font-size: 0.9rem;">Enter password to continue.</p>
-        <div id="passModalError" style="color: var(--error); margin-bottom: 10px; font-size: 0.85rem;"></div>
-        <input type="password" id="passModalInput" class="input-style" placeholder="Enter Admin Password">
-        <button id="passModalSubmit">Confirm</button>
-        <button class="cancel-btn" onclick="closePassModal()">Cancel</button>
+<div id="decisionOverlay" class="big-overlay">
+    <div class="big-dialog">
+        <span id="dialogIcon" class="dialog-icon">🎉</span>
+        <h2 id="dialogTitle" class="dialog-title">Approved!</h2>
+        <p id="dialogDesc" class="dialog-desc">Your chore has been confirmed.</p>
+        <button class="dialog-btn" id="dialogBtn" onclick="acknowledgeDecision()">Awesome</button>
     </div>
 </div>
 
 <script>
-    // ⚠️ STEP C: CHOOSE A SECRET PASSWORD FOR YOU AND YOUR FRIEND
-    const ACCESS_PASSWORD = "2812"; 
-
-    // Global Tracker States
-    let currentVerifyingUser = null;
-    let currentCorrectPIN = null;
-    let state = {
-        lastCompletedBy: "",
-        User1: { streak: 0, owed: 1 },
-        User2: { streak: 0, owed: 1 }
+    // ⚠️ UPDATE EMAILS HERE
+    const SEAT_RULES = {
+        parents: [
+            "poornima.naresh@gmail.com", // <-- Input Parent 1 Google Email
+            "nksellmybike@gmail.com"  // <-- Input Parent 2 Google Email
+        ],
+        children: [
+            "amsh.naresh@gmail.com",     // <-- Input Child/User 1 Google Email
+            "moksh.naresh@gmail.com"   // <-- Input Child/User 2 Google Email
+        ]
     };
 
-    // ⚠️ STEP D: PASTE YOUR EXACT FIREBASE STRINGS HERE 
     const firebaseConfig = {
-        apiKey: "AIzaSyAjjqxqbP_umSXBwpGAYL7HeGK2BpJOMAc",
-        authDomain: "tablewipe.firebaseapp.com",
-        databaseURL: "https://tablewipe-default-rtdb.firebaseio.com/", // Fixed clean root database URL
-        projectId: "tablewipe",
-        storageBucket: "tablewipe.firebasestorage.app",
-        messagingSenderId: "45871127135",
-        appId: "1:45871127135:web:764c1d1a9e77ebd5cd59ea",
-        measurementId: "G-Q7B9ENHDD4"
+        apiKey: "AIzaSyBKAuqaeR33LZ9Q_al6cFk_LV3ZZm8D_rQ",
+        authDomain: "table-wipe-2app.firebaseapp.com",
+        databaseURL: "https://table-wipe-2app-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "table-wipe-2app",
+        storageBucket: "table-wipe-2app.firebasestorage.app",
+        messagingSenderId: "517565968578",
+        appId: "1:517565968578:web:06c62b4d4dc851997a4b5b"
     };
 
-    // ⚠️ STEP E: PASTE YOUR EXACT EMAILJS KEYS HERE
-    const EMAILJS_SERVICE_ID = "service_di7q8p6";
-    const EMAILJS_TEMPLATE_ID = "template_t0xaauc";
-    const EMAILJS_PUBLIC_KEY = "vTUXNYQKVVSIMSV2R";
-    
-    // Initialize Global Platforms
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
-    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+    const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
 
-    // Run Initial State Sync
-    updateUI();
+    let loggedInUser = null;
+    let selectedRole = null; 
+    let userType = null; 
+    let activeRequestData = null;
+    let selectedRating = 5;
 
-    // Listen to continuous cloud updates from Firebase Database
-    database.ref('choreState').on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            state = data;
-            updateUI();
+    function loginWithGoogle() {
+        auth.signInWithPopup(provider).catch(error => alert(error.message));
+    }
+
+    function logout() {
+        auth.signOut().then(() => { location.reload(); }).catch(error => alert(error.message));
+    }
+
+    auth.onAuthStateChanged((user) => {
+        console.log("Auth changed:", user);
+        if (user) {
+            const email = user.email.toLowerCase();
+            console.log("Logged in email:", email);
+            console.log("Parents:", SEAT_RULES.parents);
+            console.log("Children:", SEAT_RULES.children);
+            const isParent = SEAT_RULES.parents.map(e => e.toLowerCase()).includes(email);
+            const isChild = SEAT_RULES.children.map(e => e.toLowerCase()).includes(email);
+
+            if (!isParent && !isChild) {
+                alert("Access Denied: This account is not registered in the system.");
+                auth.signOut();
+                return;
+            }
+
+            loggedInUser = user;
+            document.getElementById('loginScreen').classList.remove('active');
+            document.getElementById('historyContainer').style.display = 'block';
+
+            if (isParent) {
+    userType = 'parent';
+    document.getElementById('parentDashboard').classList.add('active');
+    document.getElementById('btnDeleteLogs').style.display = "block";
+    listenForParentRequests();
+} else {
+    userType = 'child';
+
+    const email = user.email.toLowerCase();
+
+    if (email === "amsh.naresh@gmail.com") {
+        setupChildDashboard("User1");
+    }
+    else if (email === "moksh.naresh@gmail.com") {
+        setupChildDashboard("User2");
+    }
+}
+            listenToHistory();
+        } else {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('loginScreen').classList.add('active');
+            document.getElementById('historyContainer').style.display = 'none';
         }
     });
 
-    function attemptLogin() {
-        const entered = document.getElementById('roomPasswordInput').value;
-        if(entered === ACCESS_PASSWORD) {
-            document.getElementById('loginScreen').classList.remove('active');
-            document.getElementById('mainScreen').classList.add('active');
-        } else {
-            document.getElementById('loginError').innerText = "Incorrect Password Room Key.";
-        }
+    /* CHILD PORTAL RENDER LOGIC */
+function setupChildDashboard(role) {
+
+    selectedRole = role;
+
+    document.getElementById('childDashboard').classList.add('active');
+
+    if (role === "User1") {
+
+        document.getElementById("labelUser1").innerText =
+            loggedInUser.displayName;
+
+        document.getElementById("btnUser1").innerText =
+            loggedInUser.displayName + " Done";
+
+        document.getElementById("btnUser1").disabled = false;
+
+    } else {
+
+        document.getElementById("labelUser2").innerText =
+            loggedInUser.displayName;
+
+        document.getElementById("btnUser2").innerText =
+            loggedInUser.displayName + " Done";
+
+        document.getElementById("btnUser2").disabled = false;
+
     }
 
-    function updateUI() {
-        document.getElementById('p1-streak').innerText = state.User1.streak;
-        document.getElementById('p1-owed').innerText = state.User1.owed;
-        document.getElementById('p2-friend').innerText = state.User2.streak;
-        document.getElementById('p2-owed').innerText = state.User2.owed;
-    }
+    listenForChildRequests();
+}
 
-    function syncToFirebase() {
-        database.ref('choreState').set(state);
-    }
+    function listenForChildRequests() {
+        database.ref('approvalRequest').on('value', (snapshot) => {
+            const req = snapshot.val();
+            const banner = document.getElementById('statusBanner');
+            const lieBtn1 = document.getElementById('lieUser1');
+            const lieBtn2 = document.getElementById('lieUser2');
+            
+            if (req && req.active && req.user === selectedRole) {
+                if(selectedRole === 'User1') lieBtn1.style.display = "block";
+                if(selectedRole === 'User2') lieBtn2.style.display = "block";
 
-    function displayBanner(message, type) {
-        const banner = document.getElementById('statusBanner');
-        banner.innerText = message;
-        banner.className = `status-banner ${type}`;
-        setTimeout(() => { banner.className = 'status-banner'; }, 6000);
-    }
-
-    function triggerEmail(user, parentEmail) {
-        currentVerifyingUser = user;
-        document.getElementById('modalError').innerText = "";
-        currentCorrectPIN = Math.floor(1000 + Math.random() * 9000).toString();
-        
-        const templateParams = {
-            user: user === 'User1' ? 'Your child' : 'Your friend',
-            pin: currentCorrectPIN,
-            to_email: parentEmail 
-        };
-
-        emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
-        .then(() => {
-            document.getElementById('otpModal').style.display = 'flex';
-        })
-        .catch((err) => {
-            displayBanner("Email transmission failed. Check API configuration values.", "error");
-            console.error(err);
+                if (req.status === 'pending') {
+                    banner.style.display = "block";
+                } else if (req.status === 'approved') {
+                    showBigDialog(true, req.rating);
+                } else if (req.status === 'rejected') {
+                    showBigDialog(false);
+                }
+            } else {
+                banner.style.display = "none";
+                lieBtn1.style.display = "none";
+                lieBtn2.style.display = "none";
+                document.getElementById('decisionOverlay').classList.remove('active');
+            }
         });
     }
 
-    function verifyEmailOTP() {
-        const inputCode = document.getElementById('otpInput').value;
-        const modalError = document.getElementById('modalError');
-
-        if(inputCode === currentCorrectPIN) {
-            processTaskCompletion(currentVerifyingUser);
-            closeModal();
-            displayBanner(`Success! Saved live metric updates.`, "success");
+    function verifyTruth() {
+        const confessed = confirm("🤖 SYS-LOG: Polygraph mode activated.\n\nAre you lying about finishing this chore?");
+        if (confessed) {
+            alert("System verification abandoned! Request removed from parent logs. Go do your chore! 😤");
+            database.ref('approvalRequest').remove();
         } else {
-            modalError.innerText = "Incorrect pin code verification verification entry.";
+            alert("Compilation clean. Continuing background authorization protocols... 🚀");
         }
     }
 
-    function closeModal() {
-        document.getElementById('otpModal').style.display = 'none';
-        document.getElementById('otpInput').value = '';
+    function sendRequest(typeString) {
+        database.ref('approvalRequest').set({
+            active: true,
+            user: typeString,
+            childName: loggedInUser.displayName,
+            status: 'pending'
+        });
     }
 
-    function promptReset() {
-        document.getElementById('passModalError').innerText = "";
-        document.getElementById('passModalInput').value = "";
-        document.getElementById('passModalTitle').innerText = "Reset All Progress Data";
-        document.getElementById('passModalDesc').innerText = "Enter the Room Password to clear data logs back to start defaults.";
+    function showBigDialog(isApproved, rating = 0) {
+        const overlay = document.getElementById('decisionOverlay');
+        const icon = document.getElementById('dialogIcon');
+        const title = document.getElementById('dialogTitle');
+        const desc = document.getElementById('dialogDesc');
+        const btn = document.getElementById('dialogBtn');
+
+        if (isApproved) {
+            icon.innerText = "🎉";
+            title.innerText = "Approved!";
+            title.style.color = "var(--success)";
+            desc.innerText = `Rating: ${"⭐".repeat(rating)}`;
+            btn.style.backgroundColor = "var(--success)";
+        } else {
+            icon.innerText = "✕";
+            title.innerText = "Rejected";
+            title.style.color = "var(--error)";
+            desc.innerText = "Please redo your tasks.";
+            btn.style.backgroundColor = "var(--error)";
+        }
+        overlay.classList.add('active');
+    }
+
+    function acknowledgeDecision() {
+        database.ref('approvalRequest').remove();
+    }
+
+    /* PARENT CONTROL HUB LOGIC */
+    function listenForParentRequests() {
+        database.ref('approvalRequest').on('value', (snapshot) => {
+            const req = snapshot.val();
+            activeRequestData = req;
+            if (req && req.active && req.status === 'pending') {
+                document.getElementById('noRequests').style.display = 'none';
+                document.getElementById('requestBox').style.display = 'block';
+                document.getElementById('reqUser').innerText = req.childName;
+            } else {
+                document.getElementById('noRequests').style.display = 'block';
+                document.getElementById('requestBox').style.display = 'none';
+                closeRatingModal();
+            }
+        });
+    }
+
+    function openRatingModal() {
+        setRating(5);
+        document.getElementById('ratingModal').style.display = 'flex';
+    }
+
+    function closeRatingModal() {
+        document.getElementById('ratingModal').style.display = 'none';
+    }
+
+    function setRating(rating) {
+        selectedRating = rating;
+        const stars = document.querySelectorAll('.star');
+        stars.forEach((star, index) => {
+            if (index < rating) star.classList.add('selected');
+            else star.classList.remove('selected');
+        });
+    }
+
+    function submitApproval() {
+        if (!activeRequestData) return;
+        const timestamp = new Date().toLocaleString();
+        const historyRef = database.ref('choreHistory').push();
         
-        document.getElementById('passModalSubmit').onclick = executeDataReset;
-        document.getElementById('passwordModal').style.display = 'flex';
+        historyRef.set({
+            userType: activeRequestData.user,
+            childName: activeRequestData.childName,
+            status: 'approved',
+            rating: selectedRating,
+            timestamp: timestamp,
+            parentName: loggedInUser.displayName,
+            parentEmail: loggedInUser.email
+        });
+
+        database.ref('approvalRequest').update({ status: 'approved', rating: selectedRating });
     }
 
-    function executeDataReset() {
-        const passwordEntered = document.getElementById('passModalInput').value;
-        if(passwordEntered === ACCESS_PASSWORD) {
-            state = {
-                lastCompletedBy: "",
-                User1: { streak: 0, owed: 1 },
-                User2: { streak: 0, owed: 1 }
-            };
-            syncToFirebase();
-            closePassModal();
-            displayBanner("Database reset successfully completed.", "success");
-        } else {
-            document.getElementById('passModalError').innerText = "Invalid security credential password.";
+    function rejectChore() {
+        if (!activeRequestData) return;
+        const timestamp = new Date().toLocaleString();
+        const historyRef = database.ref('choreHistory').push();
+        
+        historyRef.set({
+            userType: activeRequestData.user,
+            childName: activeRequestData.childName,
+            status: 'rejected',
+            rating: null,
+            timestamp: timestamp,
+            parentName: loggedInUser.displayName,
+            parentEmail: loggedInUser.email
+        });
+
+        database.ref('approvalRequest').update({ status: 'rejected' });
+    }
+
+    function clearChoreHistory() {
+        const check = confirm("⚠️ ALERT: You are about to wipe out all historical ledger entries.\n\nAre you sure you want to completely clear the log table history?");
+        if (check) {
+            database.ref('choreHistory').remove()
+                .then(() => alert("Database history logs dropped successfully."))
+                .catch(err => alert("Operation error: " + err.message));
         }
     }
 
-    function closePassModal() {
-        document.getElementById('passwordModal').style.display = 'none';
-        document.getElementById('passModalInput').value = "";
-    }
+    /* HISTORY SYNDICATION AND RATING MATRIX MAPPER */
+    function listenToHistory() {
+        database.ref('choreHistory').on('value', (snapshot) => {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = "";
+            
+            let u1Total = 0, u1Count = 0;
+            let u2Total = 0, u2Count = 0;
 
-    function processTaskCompletion(user) {
-        const opponent = user === 'User1' ? 'User2' : 'User1';
+            snapshot.forEach((childSnapshot) => {
+                const log = childSnapshot.val();
+                
+                if(log.status === 'approved' && log.rating) {
+                    if(log.userType === 'User1') { u1Total += log.rating; u1Count++; }
+                    if(log.userType === 'User2') { u2Total += log.rating; u2Count++; }
+                }
 
-        if (state[user].owed > 0) {
-            state[user].owed--;
-        }
+                const row = `<tr>
+                    <td>${log.childName}</td>
+                    <td><span class="badge ${log.status}">${log.status.toUpperCase()}</span></td>
+                    <td>${log.rating ? '⭐ ' + log.rating : '—'}</td>
+                    <td>${log.timestamp}</td>
+                    <td>${log.parentName || '—'}</td>
+                    <td>${log.parentEmail || '—'}</td>
+                </tr>`;
+                tbody.insertAdjacentHTML('afterbegin', row);
+            });
 
-        if (state.lastCompletedBy === user) {
-            state[user].streak++;
-            if (state[user].streak >= 2) {
-                state[opponent].owed += 2;
-                state[user].streak = 0; 
+            const u1El = document.getElementById('u1Rating');
+            const u2El = document.getElementById('u2Rating');
+            if(u1El && u2El) {
+                u1El.innerText = u1Count > 0 ? `Rating: ⭐ ${(u1Total/u1Count).toFixed(1)}` : "Rating: —-";
+                u2El.innerText = u2Count > 0 ? `Rating: ⭐ ${(u2Total/u2Count).toFixed(1)}` : "Rating: —-";
             }
-        } else {
-            if (state.lastCompletedBy) {
-                state[state.lastCompletedBy].streak = 0;
-            }
-            state[user].streak = 1;
-        }
-
-        if (state[user].owed === 0 && state[opponent].owed === 0) {
-            state[user].owed = 1;
-            state[opponent].owed = 1;
-        }
-
-        state.lastCompletedBy = user;
-        syncToFirebase();
+        });
     }
 </script>
 </body>
